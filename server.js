@@ -11,12 +11,21 @@ const cors = require("cors");
 const mysql = require("mysql2");
 const bodyParser = require("body-parser");
 
+const PORT = process.env.PORT || 8081;
+const CORS_ORIGIN = process.env.CORS_ORIGIN;
+
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: CORS_ORIGIN,
+    credentials: true,
+  })
+);
 
+/*
 // database connection
 const db = mysql.createPool({
   connectionLimit: process.env.DB_CONN_LIMIT,
@@ -24,6 +33,16 @@ const db = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+}); */
+
+// database connection for users
+const db = mysql.createPool({
+  connectionLimit: 10,
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  port: process.env.MYSQLPORT || 3306,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQL_DATABASE,
 });
 
 // fetch donations by user_id
@@ -42,6 +61,7 @@ app.get("/donations/:user_id", (req, res) => {
         console.error("Error fetching donations:", err);
         return res.status(500).send("Failed to fetch donations.");
       }
+      console.log(results);
       res.json(results);
     }
   );
@@ -62,6 +82,7 @@ app.post("/donations", async (req, res) => {
       if (err) {
         res.status(418).send("Couldn't add to database");
       } else {
+        console.log("donation added to database");
         res.send("Successful donation.");
       }
     }
@@ -87,6 +108,7 @@ app.get("/dashboard/total-donations/:user_id", (req, res) => {
     }
 
     const totalDonations = results[0]?.total_donations || 0;
+    console.log({ totalDonations: totalDonations });
     res.json({ total_donations: totalDonations });
   });
 });
@@ -119,8 +141,8 @@ app.get("/dashboard/recent-transactions/:user_id", (req, res) => {
 });
 
 // listener
-app.listen(8081, () => {
-  console.log("server listening on port 8081");
+app.listen(PORT, () => {
+  console.log(`Microservice-D server listening on port ${PORT}`);
 });
 
 module.exports.db = db;
